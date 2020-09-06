@@ -8,3 +8,4 @@ edition = "2018"
 
 [dependencies]
 prometheus_exporter_base = "0.31.0"
+tokio = { version = "0.2", features = ["macros"] }
