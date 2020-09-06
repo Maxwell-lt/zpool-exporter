@@ -2,7 +2,6 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use prometheus_exporter_base::{render_prometheus, PrometheusMetric, MetricType};
 use std::process::Command;
 use std::str::from_utf8;
-use std::error::Error;
 
 #[derive(Debug, Clone, Default)]
 struct MyOptions {}
@@ -32,19 +31,19 @@ impl std::error::Error for MultiError {
 
 impl From<std::io::Error> for MultiError {
   fn from(err: std::io::Error) -> Self {
-    MultiError::new(err.description())
+    MultiError::new(&err.to_string())
   }
 }
 
 impl From<std::str::Utf8Error> for MultiError {
   fn from(err: std::str::Utf8Error) -> Self {
-    MultiError::new(err.description())
+    MultiError::new(&err.to_string())
   }
 }
 
 impl From<std::num::ParseIntError> for MultiError {
   fn from(err: std::num::ParseIntError) -> Self {
-    MultiError::new(err.description())
+    MultiError::new(&err.to_string())
   }
 }
 
