@@ -1,6 +1,6 @@
 [package]
 name = "zpool_exporter"
-version = "0.1.1"
+version = "0.2.0"
 authors = ["Maxwell L-T <maxwell.lt@live.com>"]
 edition = "2018"
 
@@ -9,3 +9,5 @@ edition = "2018"
 [dependencies]
 prometheus_exporter_base = "0.31.0"
 tokio = { version = "0.2", features = ["macros"] }
+clap = "2.33.3"
+failure = "0.1.0"
