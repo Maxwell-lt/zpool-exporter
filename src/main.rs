@@ -58,7 +58,7 @@ async fn main() {
 
   let options = Options::from_claps(&matches);      
   
-  let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), options.port);
+  let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), options.port);
   render_prometheus(addr, options, |_request, options|
     async move {
       let zpool_metric = PrometheusMetric::new("zpool_property", MetricType::Gauge, "zpool property");
