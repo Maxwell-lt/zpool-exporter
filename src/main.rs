@@ -1,14 +1,14 @@
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-use prometheus_exporter_base::{render_prometheus, PrometheusMetric, MetricType};
+#[macro_use] extern crate rocket;
 use std::process::Command;
 use std::str::from_utf8;
-use clap::{Arg, App, crate_name, crate_authors, crate_version};
-mod exporter_error;
-use exporter_error::ExporterError;
-mod options;
+use anyhow::Result;
+use rocket::{State, Config};
+use structopt::StructOpt;
 use options::Options;
 
-fn get_property(dataset: &str, property: &str) -> Result<u64, ExporterError> {
+mod options;
+
+fn get_property(dataset: &str, property: &str) -> Result<u64> {
   Ok(
     from_utf8(
       &Command::new("zfs")
@@ -27,52 +27,30 @@ fn get_property(dataset: &str, property: &str) -> Result<u64, ExporterError> {
   )
 }
 
-#[tokio::main]
-async fn main() {
-  let matches = App::new(crate_name!())
-    .version(crate_version!())
-    .author(crate_authors!("\n"))
-    .arg(Arg::with_name("port")
-      .short("p")
-      .long("port")
-      .required(false)
-      .help("Sets the port the exporter uses")
-      .default_value("9101")
-      .takes_value(true))
-    .arg(Arg::with_name("properties")
-      .short("P")
-      .long("properties")
-      .help("Which properties of the zpool should be retrieved")
-      .required(false)
-      .default_value("used,available")
-      .use_delimiter(true)
-      .takes_value(true))
-    .arg(Arg::with_name("datasets")
-      .short("d")
-      .long("datasets")
-      .help("Which datasets should be polled for properties")
-      .required(true)
-      .use_delimiter(true)
-      .takes_value(true))
-    .get_matches();
+#[get("/metrics")]
+fn metrics(parameters: &State<options::Options>) -> Result<String, rocket::response::Debug<anyhow::Error>> {
+    let mut output = String::new();
+    output.push_str("# HELP zpool_property zpool property\n");
+    output.push_str("# TYPE zpool_property gauge\n");
 
-  let options = Options::from_claps(&matches);      
-  
-  let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), options.port);
-  render_prometheus(addr, options, |_request, options|
-    async move {
-      let zpool_metric = PrometheusMetric::new("zpool_property", MetricType::Gauge, "zpool property");
-      let mut s = zpool_metric.render_header();
-
-      for dataset in &options.datasets {
-        for property in &options.properties {
-          let attributes = vec![("dataset", dataset.as_str()), ("property", property.as_str())];
-          let value = get_property(&dataset, &property)?;
-          s.push_str(&zpool_metric.render_sample(Some(&attributes), value, None));
+    for dataset in &parameters.datasets {
+        for property in &parameters.properties {
+            let value = get_property(&dataset, &property)?;
+            output.push_str(&format!("zpool_property{{dataset=\"{}\",property=\"{}\"}} {}\n", &dataset, &property, value));
         }
-      }
+    }
 
-      Ok(s)
-  })
-  .await;
+    Ok(output)
+
+    
+}
+
+#[launch]
+fn rocket() -> _ {
+    let parameters: Options = Options::from_args();
+    
+    let config = Config::figment()
+        .merge(("port", parameters.port));
+
+    rocket::custom(config).manage(parameters).mount("/", routes![metrics])
 }
